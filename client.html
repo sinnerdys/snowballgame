@@ -94,6 +94,12 @@
         grid-template-columns: 1fr 1fr;
         gap: 14px;
       }
+      .arena{
+        display:grid;
+        grid-template-columns: 320px 1fr 320px;
+        gap: 14px;
+        align-items:start;
+      }
       .panel{
         display:grid;
         gap: 12px;
@@ -223,6 +229,32 @@
         grid-template-columns: 1fr 1fr 1fr;
         gap: 10px;
       }
+      .btn.has-meter{
+        position:relative;
+        overflow:hidden;
+        padding-bottom: 18px;
+      }
+      .btn .meter{
+        position:absolute;
+        left: 12px;
+        right: 12px;
+        bottom: 8px;
+        height: 3px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        overflow:hidden;
+      }
+      .btn .meter::after{
+        content:"";
+        display:block;
+        height:100%;
+        width: calc(var(--p, 0) * 100%);
+        background: linear-gradient(90deg, rgba(96,165,250,.85), rgba(29,78,216,.65));
+        transition: width .15s linear;
+      }
+      .btn.is-ready{
+        box-shadow: 0 0 0 1px rgba(96,165,250,.18) inset, 0 10px 28px rgba(96,165,250,.10);
+      }
       .cooldown{
         color: var(--muted);
         font-weight: 700;
@@ -238,118 +270,46 @@
         padding: 10px;
       }
 
-      /* --- Battle boards ("sea battle" vibe) --- */
-      .battle{
+      .roster{
+        list-style:none;
+        padding: 0;
+        margin: 0;
         display:grid;
-        gap: 12px;
-      }
-      .boards{
-        display:grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 12px;
-      }
-      .board{
-        border: 1px solid var(--stroke2);
-        background: rgba(0,0,0,.14);
-        border-radius: var(--rad2);
-        padding: 12px;
-        display:grid;
-        gap: 10px;
-        min-width: 280px;
-      }
-      .boardHeader{
-        display:flex;
-        justify-content:space-between;
-        align-items:center;
-        gap: 10px;
-      }
-      .grid8{
-        --cell: min(42px, 7.8vw);
-        display:grid;
-        grid-template-columns: repeat(8, var(--cell));
-        grid-template-rows: repeat(8, var(--cell));
         gap: 6px;
-        justify-content:center;
-        padding: 8px;
-        border-radius: 16px;
-        border: 1px solid rgba(255,255,255,.10);
-        background:
-          radial-gradient(520px 320px at 20% 15%, rgba(96,165,250,.12), transparent 60%),
-          radial-gradient(520px 320px at 85% 35%, rgba(29,78,216,.10), transparent 62%),
-          rgba(0,0,0,.14);
-        position:relative;
-        overflow:hidden;
+        max-height: 220px;
+        overflow:auto;
       }
-      .cell{
+      .roster li{
+        padding: 8px 10px;
         border-radius: 12px;
-        border: 1px solid rgba(255,255,255,.10);
-        background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
-        position:relative;
-        overflow:hidden;
+        border: 1px solid rgba(255,255,255,.08);
+        background: rgba(255,255,255,.04);
+        color: rgba(255,255,255,.88);
+        font-weight: 700;
       }
-      .cell::after{
-        content:"";
-        position:absolute;
-        inset:-1px;
-        background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.12), transparent 55%);
-        opacity:.65;
-      }
-      .impact{
-        position:absolute;
-        inset:0;
-        display:grid;
-        place-items:center;
-        pointer-events:none;
-      }
-      .burst{
-        width: 10px;
-        height: 10px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.92);
-        box-shadow:
-          0 0 0 10px rgba(255,255,255,.14),
-          0 0 0 22px rgba(96,165,250,.10),
-          0 12px 30px rgba(0,0,0,.25);
-        transform: scale(.6);
-        opacity:0;
-        animation: burst .55s ease-out forwards;
-      }
-      .burst.shield{
-        background: rgba(96,165,250,.95);
-        box-shadow:
-          0 0 0 10px rgba(96,165,250,.16),
-          0 0 0 22px rgba(29,78,216,.12),
-          0 12px 30px rgba(0,0,0,.25);
-      }
-      @keyframes burst{
-        from{ transform: scale(.55); opacity:.10 }
-        35%{ opacity: 1 }
-        to{ transform: scale(1.10); opacity:0 }
-      }
-      .pile{
-        position:absolute;
-        left: 50%;
-        bottom: -8px;
-        transform: translateX(-50%);
-        width: 82%;
-        height: 58%;
-        border-radius: 999px 999px 18px 18px;
-        background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.96), rgba(255,255,255,.55) 55%, rgba(255,255,255,.18) 100%);
-        filter: blur(.0px);
-        opacity: 0;
-        animation: pileIn .35s ease-out forwards;
-      }
-      .pile.l2{ height: 66%; opacity:.92 }
-      .pile.l3{ height: 74%; opacity:.95 }
-      .pile.l4{ height: 82%; opacity:.98 }
-      @keyframes pileIn{
-        from{ transform: translateX(-50%) translateY(10px) scale(.96); opacity:.10 }
-        to{ transform: translateX(-50%) translateY(0) scale(1); opacity:.88 }
+      .roster li.me{
+        border-color: rgba(96,165,250,.22);
+        box-shadow: 0 0 0 1px rgba(96,165,250,.12) inset;
       }
 
-      @media (max-width: 960px){
-        .boards{ grid-template-columns: 1fr; }
-        .grid8{ --cell: min(44px, 10.5vw); }
+      .comboToast{
+        display:none;
+        justify-content:center;
+      }
+      .comboToast.show{ display:flex; }
+      .comboPill{
+        padding: 10px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.12);
+        background: linear-gradient(135deg, rgba(96,165,250,.20), rgba(29,78,216,.10));
+        font-weight: 900;
+        letter-spacing:.02em;
+        box-shadow: 0 16px 40px rgba(0,0,0,.35);
+        animation: comboPop .55s ease-out;
+      }
+      @keyframes comboPop{
+        from{ transform: translateY(-6px) scale(.96); opacity:.1 }
+        to{ transform: translateY(0) scale(1); opacity:1 }
       }
       .logItem{
         padding: 8px 8px;
@@ -403,6 +363,7 @@
 
       @media (max-width: 960px){
         .grid{ grid-template-columns: 1fr; }
+        .arena{ grid-template-columns: 1fr; }
         .actions{ grid-template-columns: 1fr; }
         .stats{ grid-template-columns: 1fr; }
         .log{ height: 320px; }
@@ -475,42 +436,31 @@
       </section>
 
       <section id="gameCard" class="card hidden">
-        <div class="grid">
-          <div class="panel">
-            <div class="stats">
-              <div class="team" id="teamBoxA">
-                <div class="row" style="justify-content:space-between">
-                  <h3>Office A</h3>
-                  <span class="badge">🎯 <span id="playersA">0</span></span>
-                </div>
-                <div class="kv"><span>HP</span><b><span id="hpA">10</span>/10</b></div>
-                <div class="bar" aria-label="HP Office A"><div id="hpBarA"></div></div>
-                <div class="kv"><span>Снежки</span><b>❄️ <span id="snowA">20</span></b></div>
-                <div class="shield" id="shieldA">
-                  <div>
-                    <div><b>🛡️ Щит</b></div>
-                    <small id="shieldAText">неактивний</small>
-                  </div>
-                  <div class="badge">HP <span id="shieldAHp">0</span></div>
-                </div>
+        <div class="arena">
+          <aside class="panel">
+            <div class="team" id="teamBoxA">
+              <div class="row" style="justify-content:space-between">
+                <h3>Office A</h3>
+                <span class="badge">🎯 <span id="playersA">0</span></span>
               </div>
+              <div class="kv"><span>HP</span><b><span id="hpA">10</span>/10</b></div>
+              <div class="bar" aria-label="HP Office A"><div id="hpBarA"></div></div>
+              <div class="kv"><span>Снежки</span><b>❄️ <span id="snowA">20</span></b></div>
+              <div class="shield" id="shieldA">
+                <div>
+                  <div><b>🛡️ Щит</b></div>
+                  <small id="shieldAText">неактивен</small>
+                </div>
+                <div class="badge">HP <span id="shieldAHp">0</span></div>
+              </div>
+              <div class="label">Состав</div>
+              <ul id="rosterA" class="roster" aria-label="Состав Office A"></ul>
+            </div>
+          </aside>
 
-              <div class="team" id="teamBoxB">
-                <div class="row" style="justify-content:space-between">
-                  <h3>Office B</h3>
-                  <span class="badge">🎯 <span id="playersB">0</span></span>
-                </div>
-                <div class="kv"><span>HP</span><b><span id="hpB">10</span>/10</b></div>
-                <div class="bar" aria-label="HP Office B"><div id="hpBarB"></div></div>
-                <div class="kv"><span>Снежки</span><b>❄️ <span id="snowB">20</span></b></div>
-                <div class="shield" id="shieldB">
-                  <div>
-                    <div><b>🛡️ Щит</b></div>
-                    <small id="shieldBText">неактивний</small>
-                  </div>
-                  <div class="badge">HP <span id="shieldBHp">0</span></div>
-                </div>
-              </div>
+          <section class="panel">
+            <div id="comboToast" class="comboToast" aria-live="polite">
+              <div id="comboPill" class="comboPill">Комбо!</div>
             </div>
 
             <div class="row" style="justify-content:space-between">
@@ -518,9 +468,30 @@
               <span class="pill" id="statusPill">Статус: —</span>
             </div>
 
+            <div id="lobbyControls" class="team">
+              <div class="row" style="justify-content:space-between">
+                <h3 style="margin:0">Лобби</h3>
+                <span class="badge">⏱️ <span id="timerText">—</span></span>
+              </div>
+              <div class="row">
+                <div class="field" style="min-width:220px; flex:1 1 220px;">
+                  <span class="label">Длительность матча</span>
+                  <select id="durationSel" aria-label="Длительность матча">
+                    <option value="60">1 мин</option>
+                    <option value="120">2 мин</option>
+                    <option value="180" selected>3 мин</option>
+                    <option value="300">5 мин</option>
+                    <option value="600">10 мин</option>
+                  </select>
+                </div>
+                <button id="startBtn" class="btn primary" type="button">Старт матча</button>
+              </div>
+              <small style="color:var(--muted)">Победа — по HP (или по таймеру, если HP равны — ничья).</small>
+            </div>
+
             <div class="actions">
-              <button id="throwBtn" class="btn primary" type="button">❄️ Бросить снежок</button>
-              <button id="shieldBtn" class="btn" type="button">🛡️ Включить щит</button>
+              <button id="throwBtn" class="btn primary has-meter" type="button">❄️ Бросить снежок<span class="meter" aria-hidden="true"></span></button>
+              <button id="shieldBtn" class="btn has-meter" type="button">🛡️ Включить щит<span class="meter" aria-hidden="true"></span></button>
               <button id="resetBtn" class="btn danger" type="button">🎄 Новая игра</button>
             </div>
             <div class="row" style="justify-content:space-between">
@@ -528,40 +499,34 @@
               <span class="cooldown">Горячие клавиши: <b>R</b> — новая игра, <b>1</b> — бросок, <b>2</b> — щит</span>
             </div>
             <div id="gameError" class="error hidden"></div>
-          </div>
 
-          <div class="panel">
-            <div class="battle">
-              <div class="row" style="justify-content:space-between">
-                <span class="label">Поле боя (как морской бой)</span>
-                <button id="clearHitsBtn" class="btn" type="button" title="Очистить сугробы (только локально)">Очистить поле</button>
-              </div>
-
-              <div class="boards">
-                <div class="board">
-                  <div class="boardHeader">
-                    <span class="badge">Office A</span>
-                    <span class="cooldown">Сугробы: <b id="hitsA">0</b></span>
-                  </div>
-                  <div id="gridA" class="grid8" aria-label="Поле Office A"></div>
-                </div>
-
-                <div class="board">
-                  <div class="boardHeader">
-                    <span class="badge">Office B</span>
-                    <span class="cooldown">Сугробы: <b id="hitsB">0</b></span>
-                  </div>
-                  <div id="gridB" class="grid8" aria-label="Поле Office B"></div>
-                </div>
-              </div>
-
-              <div class="row" style="justify-content:space-between">
-                <span class="label">Живой лог</span>
-                <button id="clearLogBtn" class="btn" type="button">Очистить</button>
-              </div>
-              <div id="log" class="log" aria-label="Лог событий"></div>
+            <div class="row" style="justify-content:space-between; margin-top: 10px;">
+              <span class="label">Живой лог</span>
+              <button id="clearLogBtn" class="btn" type="button">Очистить</button>
             </div>
-          </div>
+            <div id="log" class="log" aria-label="Лог событий"></div>
+          </section>
+
+          <aside class="panel">
+            <div class="team" id="teamBoxB">
+              <div class="row" style="justify-content:space-between">
+                <h3>Office B</h3>
+                <span class="badge">🎯 <span id="playersB">0</span></span>
+              </div>
+              <div class="kv"><span>HP</span><b><span id="hpB">10</span>/10</b></div>
+              <div class="bar" aria-label="HP Office B"><div id="hpBarB"></div></div>
+              <div class="kv"><span>Снежки</span><b>❄️ <span id="snowB">20</span></b></div>
+              <div class="shield" id="shieldB">
+                <div>
+                  <div><b>🛡️ Щит</b></div>
+                  <small id="shieldBText">неактивен</small>
+                </div>
+                <div class="badge">HP <span id="shieldBHp">0</span></div>
+              </div>
+              <div class="label">Состав</div>
+              <ul id="rosterB" class="roster" aria-label="Состав Office B"></ul>
+            </div>
+          </aside>
         </div>
       </section>
     </main>
@@ -614,13 +579,15 @@
         cooldownText: $("cooldownText"),
         gameError: $("gameError"),
         clearLogBtn: $("clearLogBtn"),
-        clearHitsBtn: $("clearHitsBtn"),
         log: $("log"),
-
-        gridA: $("gridA"),
-        gridB: $("gridB"),
-        hitsA: $("hitsA"),
-        hitsB: $("hitsB"),
+        rosterA: $("rosterA"),
+        rosterB: $("rosterB"),
+        lobbyControls: $("lobbyControls"),
+        durationSel: $("durationSel"),
+        startBtn: $("startBtn"),
+        timerText: $("timerText"),
+        comboToast: $("comboToast"),
+        comboPill: $("comboPill"),
 
         winDialog: $("winDialog"),
         winTitle: $("winTitle"),
@@ -637,87 +604,15 @@
         lastActionAt: 0,
         serverTime: 0,
         room: null,
+        shouldReconnect: true,
       };
+      const combo = { lastBy: null, count: 0, lastAt: 0, t: 0 };
 
-      const board = {
-        size: 8,
-        /** @type {number[]} */ A: Array(64).fill(0),
-        /** @type {number[]} */ B: Array(64).fill(0),
-      };
-
-      function buildGrid(root) {
-        root.innerHTML = "";
-        for (let i = 0; i < board.size * board.size; i++) {
-          const cell = document.createElement("div");
-          cell.className = "cell";
-          cell.dataset.i = String(i);
-          root.appendChild(cell);
-        }
-      }
-
-      function totalHits(team) {
-        const arr = team === "A" ? board.A : board.B;
-        let sum = 0;
-        for (const n of arr) sum += n;
-        return sum;
-      }
-
-      function clearBoardLocal() {
-        board.A.fill(0);
-        board.B.fill(0);
-        renderBoard();
-      }
-
-      function pileClass(level) {
-        if (level >= 4) return "pile l4";
-        if (level === 3) return "pile l3";
-        if (level === 2) return "pile l2";
-        return "pile";
-      }
-
-      function renderBoard() {
-        ui.hitsA.textContent = String(totalHits("A"));
-        ui.hitsB.textContent = String(totalHits("B"));
-
-        const rootA = ui.gridA;
-        const rootB = ui.gridB;
-        if (!rootA.children.length) buildGrid(rootA);
-        if (!rootB.children.length) buildGrid(rootB);
-
-        for (let i = 0; i < 64; i++) {
-          const a = /** @type {HTMLElement} */ (rootA.children[i]);
-          const b = /** @type {HTMLElement} */ (rootB.children[i]);
-
-          const la = Math.min(4, board.A[i]);
-          const lb = Math.min(4, board.B[i]);
-          a.querySelector(".pile")?.remove();
-          b.querySelector(".pile")?.remove();
-          if (la > 0) {
-            const p = document.createElement("div");
-            p.className = pileClass(la);
-            a.appendChild(p);
-          }
-          if (lb > 0) {
-            const p = document.createElement("div");
-            p.className = pileClass(lb);
-            b.appendChild(p);
-          }
-        }
-      }
-
-      function animateImpact(team, idx, outcome) {
-        const root = team === "A" ? ui.gridA : ui.gridB;
-        if (!root.children.length) buildGrid(root);
-        const cell = /** @type {HTMLElement} */ (root.children[idx]);
-        if (!cell) return;
-
-        const holder = document.createElement("div");
-        holder.className = "impact";
-        const burst = document.createElement("div");
-        burst.className = outcome === "shield" ? "burst shield" : "burst";
-        holder.appendChild(burst);
-        cell.appendChild(holder);
-        window.setTimeout(() => holder.remove(), 700);
+      function showCombo(team, count) {
+        ui.comboPill.textContent = `Комбо Office ${team}: x${count}`;
+        ui.comboToast.classList.add("show");
+        if (combo.t) window.clearTimeout(combo.t);
+        combo.t = window.setTimeout(() => ui.comboToast.classList.remove("show"), 900);
       }
 
       function loadPrefs() {
@@ -726,7 +621,7 @@
           if (!raw) return;
           const p = JSON.parse(raw);
           if (typeof p.nick === "string") ui.nick.value = p.nick.slice(0, 18);
-          if (typeof p.roomCode === "string") ui.roomCode.value = p.roomCode.slice(0, 10);
+          if (typeof p.roomCode === "string") ui.roomCode.value = p.roomCode.replace(/[^\d]/g, "").slice(0, 6);
           if (p.team === "B") setTeam("B");
         } catch {}
       }
@@ -778,6 +673,7 @@
         if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
         if (state.ws && state.ws.readyState === WebSocket.CONNECTING) return;
 
+        state.shouldReconnect = true;
         const ws = new WebSocket(wsUrl());
         state.ws = ws;
 
@@ -804,20 +700,20 @@
           }
           if (msg.type === "event" && msg.event) {
             const evn = msg.event;
-            if (evn.kind === "reset") {
-              clearBoardLocal();
-              return;
-            }
             if (evn.kind === "impact") {
-              const team = evn.team === "B" ? "B" : "A";
-              const idx = Number.isFinite(evn.cell) ? Math.max(0, Math.min(63, evn.cell)) : 0;
               const outcome = evn.outcome === "shield" ? "shield" : "hit";
+              const by = evn.byTeam === "B" ? "B" : "A";
+              const t = Date.now();
               if (outcome === "hit") {
-                if (team === "A") board.A[idx] += 1;
-                else board.B[idx] += 1;
+                if (combo.lastBy === by && t - combo.lastAt < 6000) combo.count += 1;
+                else combo.count = 1;
+                combo.lastBy = by;
+                combo.lastAt = t;
+                if (combo.count >= 2) showCombo(by, combo.count);
+              } else {
+                combo.count = 0;
+                combo.lastBy = null;
               }
-              animateImpact(team, idx, outcome);
-              renderBoard();
               return;
             }
           }
@@ -827,6 +723,7 @@
         });
 
         ws.addEventListener("close", () => {
+          if (!state.shouldReconnect) return;
           ui.statusPill.textContent = "Статус: отключено (переподключение…)";
           setTimeout(() => connect(), 700);
         });
@@ -859,14 +756,17 @@
 
         show(ui.joinCard, false);
         show(ui.gameCard, true);
-        // Ensure visuals are ready on enter.
-        renderBoard();
       }
 
       function sendAction(action) {
         if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
         state.ws.send(JSON.stringify({ type: "action", action }));
         state.lastActionAt = Date.now();
+      }
+
+      function sendStart(durationSec) {
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+        state.ws.send(JSON.stringify({ type: "start", durationSec }));
       }
 
       function flashError(text) {
@@ -905,6 +805,12 @@
         renderShield("A", r.teams.A.shield);
         renderShield("B", r.teams.B.shield);
 
+        renderRosters(r.players);
+
+        const inProgress = !!r.match?.inProgress;
+        ui.lobbyControls.classList.toggle("hidden", inProgress || r.finished);
+        ui.timerText.textContent = inProgress ? formatTimer(r.match.remainingSec || 0) : "—";
+
         // Log
         ui.log.innerHTML = r.log
           .map((it) => `<div class="logItem"><time>${formatTime(it.t)}</time>${escapeHtml(it.text)}</div>`)
@@ -913,9 +819,24 @@
 
         if (r.finished && r.winner) {
           ui.winTitle.textContent = r.winner === state.team ? "Победа!" : "Поражение";
-          ui.winBody.textContent = `Победили: Office ${r.winner}.`;
+          ui.winBody.textContent = r.winner === "draw" ? "Ничья по итогам матча." : `Победили: Office ${r.winner}.`;
           try { ui.winDialog.showModal(); } catch {}
         }
+      }
+
+      function renderRosters(players) {
+        const myId = state.id;
+        const a = players.filter((p) => p.team === "A").map((p) => ({ ...p, me: p.id === myId }));
+        const b = players.filter((p) => p.team === "B").map((p) => ({ ...p, me: p.id === myId }));
+        ui.rosterA.innerHTML = a.map((p) => `<li class="${p.me ? "me" : ""}">${escapeHtml(p.nick)}</li>`).join("") || `<li style="opacity:.7">Пока никого</li>`;
+        ui.rosterB.innerHTML = b.map((p) => `<li class="${p.me ? "me" : ""}">${escapeHtml(p.nick)}</li>`).join("") || `<li style="opacity:.7">Пока никого</li>`;
+      }
+
+      function formatTimer(sec) {
+        const s = Math.max(0, sec | 0);
+        const mm = String(Math.floor(s / 60)).padStart(2, "0");
+        const ss = String(s % 60).padStart(2, "0");
+        return `${mm}:${ss}`;
       }
 
       function renderShield(team, shield) {
@@ -951,9 +872,30 @@
       function tickCooldown() {
         const left = Math.max(0, 5000 - (Date.now() - state.lastActionAt));
         ui.cooldownText.textContent = `${Math.ceil(left / 1000)}с`;
-        const disabled = left > 0;
-        ui.throwBtn.disabled = disabled;
-        ui.shieldBtn.disabled = disabled;
+        const r = state.room;
+        const inProgress = !!r?.match?.inProgress;
+        const finished = !!r?.finished;
+        const disabledByCd = left > 0;
+
+        ui.throwBtn.style.setProperty("--p", String(1 - Math.min(1, left / 5000)));
+        ui.throwBtn.classList.toggle("is-ready", !disabledByCd && inProgress && !finished);
+
+        const myTeam = state.team;
+        const snow = myTeam === "B" ? r?.teams?.B?.snow : r?.teams?.A?.snow;
+        const noSnow = typeof snow === "number" && snow <= 0;
+
+        ui.throwBtn.disabled = !inProgress || finished || disabledByCd || noSnow;
+
+        const myShield = myTeam === "B" ? r?.teams?.B?.shield : r?.teams?.A?.shield;
+        const shieldActive = !!myShield?.active;
+        ui.shieldBtn.disabled = !inProgress || finished || disabledByCd || shieldActive;
+
+        if (shieldActive && myShield?.until) {
+          const leftMs = Math.max(0, (myShield.until || 0) - (Date.now() - timeSkewMs()));
+          ui.shieldBtn.style.setProperty("--p", String(1 - Math.min(1, leftMs / 15000)));
+        } else {
+          ui.shieldBtn.style.setProperty("--p", "0");
+        }
       }
 
       // UI events
@@ -971,18 +913,20 @@
       ui.throwBtn.addEventListener("click", () => sendAction("throw"));
       ui.shieldBtn.addEventListener("click", () => sendAction("shield"));
       ui.resetBtn.addEventListener("click", () => sendAction("reset"));
+      ui.startBtn.addEventListener("click", () => {
+        const dur = Number(ui.durationSel.value);
+        sendStart(dur);
+      });
       ui.leaveBtn.addEventListener("click", () => {
         show(ui.gameCard, false);
         show(ui.joinCard, true);
         setError(ui.gameError, "");
         ui.statusPill.textContent = "Статус: —";
+        state.shouldReconnect = false;
         try { state.ws?.close(); } catch {}
       });
       ui.clearLogBtn.addEventListener("click", () => {
         ui.log.innerHTML = "";
-      });
-      ui.clearHitsBtn.addEventListener("click", () => {
-        clearBoardLocal();
       });
 
       ui.copyLinkBtn.addEventListener("click", async () => {
@@ -1020,11 +964,6 @@
           renderShield("B", state.room.teams.B.shield);
         }
       }, 200);
-
-      // Build boards early (nice first impression)
-      buildGrid(ui.gridA);
-      buildGrid(ui.gridB);
-      renderBoard();
 
       // Snow effect (canvas)
       (function initSnow(){

@@ -25,7 +25,9 @@ const SHIELD_HP = 3;
 const TEAM_HP = 10;
 const TEAM_SNOW = 20;
 const LOG_LIMIT = 80;
-const GRID_SIZE = 8; // Visual board only (client renders a "sea battle" grid)
+const DEFAULT_MATCH_SECONDS = 180;
+const MIN_MATCH_SECONDS = 30;
+const MAX_MATCH_SECONDS = 900;
 
 /** @typedef {"A"|"B"} Team */
 
@@ -62,6 +64,13 @@ function createRoom(code) {
     createdAt: now(),
     finished: false,
     winner: null,
+    match: {
+      inProgress: false,
+      startedAt: 0,
+      endsAt: 0,
+      durationSec: DEFAULT_MATCH_SECONDS,
+      interval: null,
+    },
     teams: {
       A: { hp: TEAM_HP, snow: TEAM_SNOW, shield: { active: false, hp: 0, until: 0, timeout: null } },
       B: { hp: TEAM_HP, snow: TEAM_SNOW, shield: { active: false, hp: 0, until: 0, timeout: null } },
@@ -97,6 +106,13 @@ function publicRoomState(room) {
     code: room.code,
     finished: room.finished,
     winner: room.winner,
+    match: {
+      inProgress: !!room.match?.inProgress,
+      startedAt: room.match?.startedAt || 0,
+      endsAt: room.match?.endsAt || 0,
+      durationSec: room.match?.durationSec || DEFAULT_MATCH_SECONDS,
+      remainingSec: room.match?.inProgress ? Math.max(0, Math.ceil((room.match.endsAt - now()) / 1000)) : 0,
+    },
     teams: {
       A: { hp: tA.hp, snow: tA.snow, shield: { active: tA.shield.active, hp: tA.shield.hp, until: tA.shield.until } },
       B: { hp: tB.hp, snow: tB.snow, shield: { active: tB.shield.active, hp: tB.shield.hp, until: tB.shield.until } },
@@ -132,8 +148,56 @@ function broadcastEvent(room, event) {
   roomBroadcast(room, { type: "event", event: { ...event, t: now() } });
 }
 
-function randomCellIndex() {
-  return Math.floor(Math.random() * (GRID_SIZE * GRID_SIZE));
+function concludeByHp(room) {
+  const a = room.teams.A.hp;
+  const b = room.teams.B.hp;
+  if (a > b) return "A";
+  if (b > a) return "B";
+  return "draw";
+}
+
+function stopMatchTimer(room) {
+  if (room.match?.interval) clearInterval(room.match.interval);
+  room.match.interval = null;
+}
+
+function finishMatch(room, winner) {
+  if (room.finished) return;
+  room.finished = true;
+  room.winner = winner;
+  stopMatchTimer(room);
+  room.match.inProgress = false;
+  broadcastEvent(room, { kind: "finish", winner });
+  if (winner === "draw") pushLog(room, "🏁 Ничья по итогам матча.");
+  else pushLog(room, `🏁 Победа: Office ${winner}.`);
+  broadcastState(room);
+}
+
+function startMatch(room, durationSec) {
+  const dur = Math.max(MIN_MATCH_SECONDS, Math.min(MAX_MATCH_SECONDS, durationSec | 0));
+  // Reset core game state.
+  resetRoomInternal(room, { silentEvent: true });
+  room.match.durationSec = dur;
+  room.match.inProgress = true;
+  room.match.startedAt = now();
+  room.match.endsAt = room.match.startedAt + dur * 1000;
+  pushLog(room, `⏱️ Матч начался: ${dur}с.`);
+  broadcastEvent(room, { kind: "start", durationSec: dur });
+  broadcastState(room);
+
+  stopMatchTimer(room);
+  room.match.interval = setInterval(() => {
+    if (!rooms.get(room.code)) return;
+    if (!room.match.inProgress) return;
+    const remaining = room.match.endsAt - now();
+    if (remaining <= 0) {
+      const w = concludeByHp(room);
+      finishMatch(room, w);
+      return;
+    }
+    // Lightweight sync point for UI progress bars.
+    broadcastEvent(room, { kind: "tick", remainingSec: Math.max(0, Math.ceil(remaining / 1000)) });
+  }, 1000);
 }
 
 function ensureRoom(code) {
@@ -158,12 +222,7 @@ function msLeftForCooldown(player) {
 }
 
 function setFinished(room, winnerTeam) {
-  if (room.finished) return;
-  room.finished = true;
-  room.winner = winnerTeam;
-  pushLog(room, `🏁 Победа: Office ${winnerTeam}.`);
-  broadcastEvent(room, { kind: "finish", winner: winnerTeam });
-  broadcastState(room);
+  finishMatch(room, winnerTeam);
 }
 
 function expireShield(room, team) {
@@ -189,6 +248,7 @@ function maybeAutoExpireShields(room) {
 
 function handleThrow(room, player) {
   if (room.finished) return { ok: false, error: "Игра уже закончилась." };
+  if (!room.match?.inProgress) return { ok: false, error: "Матч ещё не начался. Нажмите «Старт» в лобби." };
   if (!canAct(player)) return { ok: false, error: `Кулдаун: ${Math.ceil(msLeftForCooldown(player) / 1000)}с.` };
 
   maybeAutoExpireShields(room);
@@ -198,7 +258,7 @@ function handleThrow(room, player) {
   const t = room.teams[team];
   const e = room.teams[enemy];
 
-  if (t.snow <= 0) return { ok: false, error: "Снежки закончились." };
+  if (t.snow <= 0) return { ok: false, error: "Снежки закончились. Ждём конца таймера — победит команда с большим HP." };
 
   // Only "alive" (connected) players can be targets.
   const candidates = [];
@@ -217,7 +277,7 @@ function handleThrow(room, player) {
   if (e.shield.active) {
     e.shield.hp = Math.max(0, e.shield.hp - 1);
     pushLog(room, `❄️ ${player.nick} бросил(а) в Office ${enemy} — 🛡️ щит съел атаку (−1 прочность).`);
-    broadcastEvent(room, { kind: "impact", outcome: "shield", team: enemy, byTeam: team, cell: randomCellIndex() });
+    broadcastEvent(room, { kind: "impact", outcome: "shield", team: enemy, byTeam: team });
     if (e.shield.hp <= 0) {
       pushLog(room, `🛡️ Щит Office ${enemy} сломался!`);
       expireShield(room, enemy);
@@ -229,7 +289,7 @@ function handleThrow(room, player) {
 
   e.hp -= 1;
   pushLog(room, `❄️ ${player.nick} попал(а) по ${target.nick} (Office ${enemy}) — Office ${enemy} HP −1.`);
-  broadcastEvent(room, { kind: "impact", outcome: "hit", team: enemy, byTeam: team, cell: randomCellIndex() });
+  broadcastEvent(room, { kind: "impact", outcome: "hit", team: enemy, byTeam: team });
   if (e.hp <= 0) {
     setFinished(room, team);
   } else {
@@ -240,6 +300,7 @@ function handleThrow(room, player) {
 
 function handleShield(room, player) {
   if (room.finished) return { ok: false, error: "Игра уже закончилась." };
+  if (!room.match?.inProgress) return { ok: false, error: "Матч ещё не начался. Нажмите «Старт» в лобби." };
   if (!canAct(player)) return { ok: false, error: `Кулдаун: ${Math.ceil(msLeftForCooldown(player) / 1000)}с.` };
 
   maybeAutoExpireShields(room);
@@ -266,7 +327,8 @@ function handleShield(room, player) {
   return { ok: true };
 }
 
-function resetRoom(room) {
+function resetRoomInternal(room, opts) {
+  const silentEvent = !!opts?.silentEvent;
   // Clear shield timeouts.
   for (const team of /** @type {Team[]} */ (["A", "B"])) {
     const s = room.teams[team].shield;
@@ -275,6 +337,10 @@ function resetRoom(room) {
   }
   room.finished = false;
   room.winner = null;
+  stopMatchTimer(room);
+  room.match.inProgress = false;
+  room.match.startedAt = 0;
+  room.match.endsAt = 0;
   room.teams.A.hp = TEAM_HP;
   room.teams.B.hp = TEAM_HP;
   room.teams.A.snow = TEAM_SNOW;
@@ -284,7 +350,7 @@ function resetRoom(room) {
   room.log = [];
   for (const p of room.players.values()) p.lastActionAt = 0;
   pushLog(room, "🎄 Новая игра! Office A vs Office B.");
-  broadcastEvent(room, { kind: "reset" });
+  if (!silentEvent) broadcastEvent(room, { kind: "reset" });
   broadcastState(room);
 }
 
@@ -389,6 +455,14 @@ wss.on("connection", (ws) => {
 
     if (!room || !player) return send({ type: "error", error: "Сначала присоединитесь по инвайт‑коду." });
 
+    if (type === "start") {
+      if (room.match?.inProgress) return send({ type: "error", error: "Матч уже идет." });
+      const durationSec = Number(msg.durationSec);
+      if (!Number.isFinite(durationSec)) return send({ type: "error", error: "Некорректное время матча." });
+      startMatch(room, durationSec);
+      return;
+    }
+
     if (type === "action") {
       const action = String(msg.action || "");
       if (action !== "throw" && action !== "shield" && action !== "reset") {
@@ -397,7 +471,7 @@ wss.on("connection", (ws) => {
 
       if (action === "reset") {
         // Keep it simple: anyone can reset.
-        resetRoom(room);
+        resetRoomInternal(room, {});
         return;
       }
 
