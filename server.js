@@ -16,6 +16,7 @@ const { randomUUID } = require("crypto");
 const os = require("os");
 
 const PORT = Number(process.env.PORT || 3000);
+const HOST = process.env.HOST || undefined;
 const CLIENT_FILE = path.join(__dirname, "client.html");
 
 const ACTION_COOLDOWN_MS = 5000;
@@ -24,6 +25,7 @@ const SHIELD_HP = 3;
 const TEAM_HP = 10;
 const TEAM_SNOW = 20;
 const LOG_LIMIT = 80;
+const GRID_SIZE = 8; // Visual board only (client renders a "sea battle" grid)
 
 /** @typedef {"A"|"B"} Team */
 
@@ -126,6 +128,14 @@ function broadcastState(room) {
   roomBroadcast(room, { type: "state", state: publicRoomState(room) });
 }
 
+function broadcastEvent(room, event) {
+  roomBroadcast(room, { type: "event", event: { ...event, t: now() } });
+}
+
+function randomCellIndex() {
+  return Math.floor(Math.random() * (GRID_SIZE * GRID_SIZE));
+}
+
 function ensureRoom(code) {
   const c = normalizeRoomCode(code);
   if (!isValidRoomCode(c)) return null;
@@ -152,6 +162,7 @@ function setFinished(room, winnerTeam) {
   room.finished = true;
   room.winner = winnerTeam;
   pushLog(room, `🏁 Победа: Office ${winnerTeam}.`);
+  broadcastEvent(room, { kind: "finish", winner: winnerTeam });
   broadcastState(room);
 }
 
@@ -206,6 +217,7 @@ function handleThrow(room, player) {
   if (e.shield.active) {
     e.shield.hp = Math.max(0, e.shield.hp - 1);
     pushLog(room, `❄️ ${player.nick} бросил(а) в Office ${enemy} — 🛡️ щит съел атаку (−1 прочность).`);
+    broadcastEvent(room, { kind: "impact", outcome: "shield", team: enemy, byTeam: team, cell: randomCellIndex() });
     if (e.shield.hp <= 0) {
       pushLog(room, `🛡️ Щит Office ${enemy} сломался!`);
       expireShield(room, enemy);
@@ -217,6 +229,7 @@ function handleThrow(room, player) {
 
   e.hp -= 1;
   pushLog(room, `❄️ ${player.nick} попал(а) по ${target.nick} (Office ${enemy}) — Office ${enemy} HP −1.`);
+  broadcastEvent(room, { kind: "impact", outcome: "hit", team: enemy, byTeam: team, cell: randomCellIndex() });
   if (e.hp <= 0) {
     setFinished(room, team);
   } else {
@@ -271,6 +284,7 @@ function resetRoom(room) {
   room.log = [];
   for (const p of room.players.values()) p.lastActionAt = 0;
   pushLog(room, "🎄 Новая игра! Office A vs Office B.");
+  broadcastEvent(room, { kind: "reset" });
   broadcastState(room);
 }
 
@@ -424,7 +438,7 @@ const pingInterval = setInterval(() => {
 
 wss.on("close", () => clearInterval(pingInterval));
 
-server.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, HOST, () => {
   const urls = new Set([`http://localhost:${PORT}`]);
   const ifaces = os.networkInterfaces();
   for (const name of Object.keys(ifaces)) {

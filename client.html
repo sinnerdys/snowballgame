@@ -237,6 +237,120 @@
         background: rgba(0,0,0,.14);
         padding: 10px;
       }
+
+      /* --- Battle boards ("sea battle" vibe) --- */
+      .battle{
+        display:grid;
+        gap: 12px;
+      }
+      .boards{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .board{
+        border: 1px solid var(--stroke2);
+        background: rgba(0,0,0,.14);
+        border-radius: var(--rad2);
+        padding: 12px;
+        display:grid;
+        gap: 10px;
+        min-width: 280px;
+      }
+      .boardHeader{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap: 10px;
+      }
+      .grid8{
+        --cell: min(42px, 7.8vw);
+        display:grid;
+        grid-template-columns: repeat(8, var(--cell));
+        grid-template-rows: repeat(8, var(--cell));
+        gap: 6px;
+        justify-content:center;
+        padding: 8px;
+        border-radius: 16px;
+        border: 1px solid rgba(255,255,255,.10);
+        background:
+          radial-gradient(520px 320px at 20% 15%, rgba(96,165,250,.12), transparent 60%),
+          radial-gradient(520px 320px at 85% 35%, rgba(29,78,216,.10), transparent 62%),
+          rgba(0,0,0,.14);
+        position:relative;
+        overflow:hidden;
+      }
+      .cell{
+        border-radius: 12px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.03));
+        position:relative;
+        overflow:hidden;
+      }
+      .cell::after{
+        content:"";
+        position:absolute;
+        inset:-1px;
+        background: radial-gradient(circle at 30% 25%, rgba(255,255,255,.12), transparent 55%);
+        opacity:.65;
+      }
+      .impact{
+        position:absolute;
+        inset:0;
+        display:grid;
+        place-items:center;
+        pointer-events:none;
+      }
+      .burst{
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.92);
+        box-shadow:
+          0 0 0 10px rgba(255,255,255,.14),
+          0 0 0 22px rgba(96,165,250,.10),
+          0 12px 30px rgba(0,0,0,.25);
+        transform: scale(.6);
+        opacity:0;
+        animation: burst .55s ease-out forwards;
+      }
+      .burst.shield{
+        background: rgba(96,165,250,.95);
+        box-shadow:
+          0 0 0 10px rgba(96,165,250,.16),
+          0 0 0 22px rgba(29,78,216,.12),
+          0 12px 30px rgba(0,0,0,.25);
+      }
+      @keyframes burst{
+        from{ transform: scale(.55); opacity:.10 }
+        35%{ opacity: 1 }
+        to{ transform: scale(1.10); opacity:0 }
+      }
+      .pile{
+        position:absolute;
+        left: 50%;
+        bottom: -8px;
+        transform: translateX(-50%);
+        width: 82%;
+        height: 58%;
+        border-radius: 999px 999px 18px 18px;
+        background: radial-gradient(circle at 35% 25%, rgba(255,255,255,.96), rgba(255,255,255,.55) 55%, rgba(255,255,255,.18) 100%);
+        filter: blur(.0px);
+        opacity: 0;
+        animation: pileIn .35s ease-out forwards;
+      }
+      .pile.l2{ height: 66%; opacity:.92 }
+      .pile.l3{ height: 74%; opacity:.95 }
+      .pile.l4{ height: 82%; opacity:.98 }
+      @keyframes pileIn{
+        from{ transform: translateX(-50%) translateY(10px) scale(.96); opacity:.10 }
+        to{ transform: translateX(-50%) translateY(0) scale(1); opacity:.88 }
+      }
+
+      @media (max-width: 960px){
+        .boards{ grid-template-columns: 1fr; }
+        .grid8{ --cell: min(44px, 10.5vw); }
+      }
       .logItem{
         padding: 8px 8px;
         border-bottom: 1px solid rgba(255,255,255,.06);
@@ -417,11 +531,36 @@
           </div>
 
           <div class="panel">
-            <div class="row" style="justify-content:space-between">
-              <span class="label">Живой лог</span>
-              <button id="clearLogBtn" class="btn" type="button">Очистить</button>
+            <div class="battle">
+              <div class="row" style="justify-content:space-between">
+                <span class="label">Поле боя (как морской бой)</span>
+                <button id="clearHitsBtn" class="btn" type="button" title="Очистить сугробы (только локально)">Очистить поле</button>
+              </div>
+
+              <div class="boards">
+                <div class="board">
+                  <div class="boardHeader">
+                    <span class="badge">Office A</span>
+                    <span class="cooldown">Сугробы: <b id="hitsA">0</b></span>
+                  </div>
+                  <div id="gridA" class="grid8" aria-label="Поле Office A"></div>
+                </div>
+
+                <div class="board">
+                  <div class="boardHeader">
+                    <span class="badge">Office B</span>
+                    <span class="cooldown">Сугробы: <b id="hitsB">0</b></span>
+                  </div>
+                  <div id="gridB" class="grid8" aria-label="Поле Office B"></div>
+                </div>
+              </div>
+
+              <div class="row" style="justify-content:space-between">
+                <span class="label">Живой лог</span>
+                <button id="clearLogBtn" class="btn" type="button">Очистить</button>
+              </div>
+              <div id="log" class="log" aria-label="Лог событий"></div>
             </div>
-            <div id="log" class="log" aria-label="Лог событий"></div>
           </div>
         </div>
       </section>
@@ -475,7 +614,13 @@
         cooldownText: $("cooldownText"),
         gameError: $("gameError"),
         clearLogBtn: $("clearLogBtn"),
+        clearHitsBtn: $("clearHitsBtn"),
         log: $("log"),
+
+        gridA: $("gridA"),
+        gridB: $("gridB"),
+        hitsA: $("hitsA"),
+        hitsB: $("hitsB"),
 
         winDialog: $("winDialog"),
         winTitle: $("winTitle"),
@@ -493,6 +638,87 @@
         serverTime: 0,
         room: null,
       };
+
+      const board = {
+        size: 8,
+        /** @type {number[]} */ A: Array(64).fill(0),
+        /** @type {number[]} */ B: Array(64).fill(0),
+      };
+
+      function buildGrid(root) {
+        root.innerHTML = "";
+        for (let i = 0; i < board.size * board.size; i++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.dataset.i = String(i);
+          root.appendChild(cell);
+        }
+      }
+
+      function totalHits(team) {
+        const arr = team === "A" ? board.A : board.B;
+        let sum = 0;
+        for (const n of arr) sum += n;
+        return sum;
+      }
+
+      function clearBoardLocal() {
+        board.A.fill(0);
+        board.B.fill(0);
+        renderBoard();
+      }
+
+      function pileClass(level) {
+        if (level >= 4) return "pile l4";
+        if (level === 3) return "pile l3";
+        if (level === 2) return "pile l2";
+        return "pile";
+      }
+
+      function renderBoard() {
+        ui.hitsA.textContent = String(totalHits("A"));
+        ui.hitsB.textContent = String(totalHits("B"));
+
+        const rootA = ui.gridA;
+        const rootB = ui.gridB;
+        if (!rootA.children.length) buildGrid(rootA);
+        if (!rootB.children.length) buildGrid(rootB);
+
+        for (let i = 0; i < 64; i++) {
+          const a = /** @type {HTMLElement} */ (rootA.children[i]);
+          const b = /** @type {HTMLElement} */ (rootB.children[i]);
+
+          const la = Math.min(4, board.A[i]);
+          const lb = Math.min(4, board.B[i]);
+          a.querySelector(".pile")?.remove();
+          b.querySelector(".pile")?.remove();
+          if (la > 0) {
+            const p = document.createElement("div");
+            p.className = pileClass(la);
+            a.appendChild(p);
+          }
+          if (lb > 0) {
+            const p = document.createElement("div");
+            p.className = pileClass(lb);
+            b.appendChild(p);
+          }
+        }
+      }
+
+      function animateImpact(team, idx, outcome) {
+        const root = team === "A" ? ui.gridA : ui.gridB;
+        if (!root.children.length) buildGrid(root);
+        const cell = /** @type {HTMLElement} */ (root.children[idx]);
+        if (!cell) return;
+
+        const holder = document.createElement("div");
+        holder.className = "impact";
+        const burst = document.createElement("div");
+        burst.className = outcome === "shield" ? "burst shield" : "burst";
+        holder.appendChild(burst);
+        cell.appendChild(holder);
+        window.setTimeout(() => holder.remove(), 700);
+      }
 
       function loadPrefs() {
         try {
@@ -576,6 +802,25 @@
             render();
             return;
           }
+          if (msg.type === "event" && msg.event) {
+            const evn = msg.event;
+            if (evn.kind === "reset") {
+              clearBoardLocal();
+              return;
+            }
+            if (evn.kind === "impact") {
+              const team = evn.team === "B" ? "B" : "A";
+              const idx = Number.isFinite(evn.cell) ? Math.max(0, Math.min(63, evn.cell)) : 0;
+              const outcome = evn.outcome === "shield" ? "shield" : "hit";
+              if (outcome === "hit") {
+                if (team === "A") board.A[idx] += 1;
+                else board.B[idx] += 1;
+              }
+              animateImpact(team, idx, outcome);
+              renderBoard();
+              return;
+            }
+          }
           if (msg.type === "error") {
             flashError(msg.error || "Ошибка.");
           }
@@ -614,6 +859,8 @@
 
         show(ui.joinCard, false);
         show(ui.gameCard, true);
+        // Ensure visuals are ready on enter.
+        renderBoard();
       }
 
       function sendAction(action) {
@@ -734,6 +981,9 @@
       ui.clearLogBtn.addEventListener("click", () => {
         ui.log.innerHTML = "";
       });
+      ui.clearHitsBtn.addEventListener("click", () => {
+        clearBoardLocal();
+      });
 
       ui.copyLinkBtn.addEventListener("click", async () => {
         const code = String(state.room?.code || state.roomCode || ui.roomCode.value || "").replace(/[^\d]/g, "").slice(0, 6);
@@ -770,6 +1020,11 @@
           renderShield("B", state.room.teams.B.shield);
         }
       }, 200);
+
+      // Build boards early (nice first impression)
+      buildGrid(ui.gridA);
+      buildGrid(ui.gridB);
+      renderBoard();
 
       // Snow effect (canvas)
       (function initSnow(){
