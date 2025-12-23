@@ -28,6 +28,7 @@ const LOG_LIMIT = 80;
 const DEFAULT_MATCH_SECONDS = 180;
 const MIN_MATCH_SECONDS = 30;
 const MAX_MATCH_SECONDS = 900;
+const COMBO_WINDOW_MS = 6000;
 
 /** @typedef {"A"|"B"} Team */
 
@@ -70,6 +71,11 @@ function createRoom(code) {
       endsAt: 0,
       durationSec: DEFAULT_MATCH_SECONDS,
       interval: null,
+    },
+    combo: {
+      lastBy: null,
+      count: 0,
+      lastAt: 0,
     },
     teams: {
       A: { hp: TEAM_HP, snow: TEAM_SNOW, shield: { active: false, hp: 0, until: 0, timeout: null } },
@@ -278,6 +284,10 @@ function handleThrow(room, player) {
     e.shield.hp = Math.max(0, e.shield.hp - 1);
     pushLog(room, `❄️ ${player.nick} бросил(а) в Office ${enemy} — 🛡️ щит съел атаку (−1 прочность).`);
     broadcastEvent(room, { kind: "impact", outcome: "shield", team: enemy, byTeam: team });
+    // Shield blocks: break combo chain.
+    room.combo.count = 0;
+    room.combo.lastBy = null;
+    room.combo.lastAt = now();
     if (e.shield.hp <= 0) {
       pushLog(room, `🛡️ Щит Office ${enemy} сломался!`);
       expireShield(room, enemy);
@@ -290,6 +300,21 @@ function handleThrow(room, player) {
   e.hp -= 1;
   pushLog(room, `❄️ ${player.nick} попал(а) по ${target.nick} (Office ${enemy}) — Office ${enemy} HP −1.`);
   broadcastEvent(room, { kind: "impact", outcome: "hit", team: enemy, byTeam: team });
+
+  // Combo logic (server-authoritative, synced in logs).
+  {
+    const t = now();
+    const by = team;
+    if (room.combo.lastBy === by && t - room.combo.lastAt <= COMBO_WINDOW_MS) room.combo.count += 1;
+    else room.combo.count = 1;
+    room.combo.lastBy = by;
+    room.combo.lastAt = t;
+
+    if (room.combo.count >= 2) {
+      pushLog(room, `🔥 Комбо Office ${by}: x${room.combo.count}!`);
+    }
+  }
+
   if (e.hp <= 0) {
     setFinished(room, team);
   } else {
@@ -347,6 +372,7 @@ function resetRoomInternal(room, opts) {
   room.teams.B.snow = TEAM_SNOW;
   room.teams.A.shield = { active: false, hp: 0, until: 0, timeout: null };
   room.teams.B.shield = { active: false, hp: 0, until: 0, timeout: null };
+  room.combo = { lastBy: null, count: 0, lastAt: 0 };
   room.log = [];
   for (const p of room.players.values()) p.lastActionAt = 0;
   pushLog(room, "🎄 Новая игра! Office A vs Office B.");

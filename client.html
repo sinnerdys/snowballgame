@@ -232,26 +232,18 @@
       .btn.has-meter{
         position:relative;
         overflow:hidden;
-        padding-bottom: 18px;
       }
-      .btn .meter{
-        position:absolute;
-        left: 12px;
-        right: 12px;
-        bottom: 8px;
-        height: 3px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.10);
-        overflow:hidden;
-      }
-      .btn .meter::after{
+      .btn.has-meter::before{
         content:"";
-        display:block;
-        height:100%;
-        width: calc(var(--p, 0) * 100%);
-        background: linear-gradient(90deg, rgba(96,165,250,.85), rgba(29,78,216,.65));
-        transition: width .15s linear;
+        position:absolute;
+        inset: 0;
+        background: linear-gradient(90deg, rgba(96,165,250,.25), rgba(29,78,216,.12));
+        transform-origin: left center;
+        transform: scaleX(var(--p, 0));
+        opacity: .95;
+        transition: transform .15s linear;
       }
+      .btn.has-meter > *{ position:relative; z-index:1; }
       .btn.is-ready{
         box-shadow: 0 0 0 1px rgba(96,165,250,.18) inset, 0 10px 28px rgba(96,165,250,.10);
       }
@@ -292,25 +284,7 @@
         box-shadow: 0 0 0 1px rgba(96,165,250,.12) inset;
       }
 
-      .comboToast{
-        display:none;
-        justify-content:center;
-      }
-      .comboToast.show{ display:flex; }
-      .comboPill{
-        padding: 10px 14px;
-        border-radius: 999px;
-        border: 1px solid rgba(255,255,255,.12);
-        background: linear-gradient(135deg, rgba(96,165,250,.20), rgba(29,78,216,.10));
-        font-weight: 900;
-        letter-spacing:.02em;
-        box-shadow: 0 16px 40px rgba(0,0,0,.35);
-        animation: comboPop .55s ease-out;
-      }
-      @keyframes comboPop{
-        from{ transform: translateY(-6px) scale(.96); opacity:.1 }
-        to{ transform: translateY(0) scale(1); opacity:1 }
-      }
+      /* combo is now written into the shared server log */
       .logItem{
         padding: 8px 8px;
         border-bottom: 1px solid rgba(255,255,255,.06);
@@ -459,10 +433,6 @@
           </aside>
 
           <section class="panel">
-            <div id="comboToast" class="comboToast" aria-live="polite">
-              <div id="comboPill" class="comboPill">Комбо!</div>
-            </div>
-
             <div class="row" style="justify-content:space-between">
               <span class="pill" id="mePill">Вы: —</span>
               <span class="pill" id="statusPill">Статус: —</span>
@@ -490,8 +460,8 @@
             </div>
 
             <div class="actions">
-              <button id="throwBtn" class="btn primary has-meter" type="button">❄️ Бросить снежок<span class="meter" aria-hidden="true"></span></button>
-              <button id="shieldBtn" class="btn has-meter" type="button">🛡️ Включить щит<span class="meter" aria-hidden="true"></span></button>
+              <button id="throwBtn" class="btn primary has-meter" type="button">❄️ Бросить снежок</button>
+              <button id="shieldBtn" class="btn has-meter" type="button">🛡️ Включить щит</button>
               <button id="resetBtn" class="btn danger" type="button">🎄 Новая игра</button>
             </div>
             <div class="row" style="justify-content:space-between">
@@ -586,8 +556,7 @@
         durationSel: $("durationSel"),
         startBtn: $("startBtn"),
         timerText: $("timerText"),
-        comboToast: $("comboToast"),
-        comboPill: $("comboPill"),
+        // combo is shown in the shared log (server-side), no separate UI element
 
         winDialog: $("winDialog"),
         winTitle: $("winTitle"),
@@ -606,14 +575,7 @@
         room: null,
         shouldReconnect: true,
       };
-      const combo = { lastBy: null, count: 0, lastAt: 0, t: 0 };
-
-      function showCombo(team, count) {
-        ui.comboPill.textContent = `Комбо Office ${team}: x${count}`;
-        ui.comboToast.classList.add("show");
-        if (combo.t) window.clearTimeout(combo.t);
-        combo.t = window.setTimeout(() => ui.comboToast.classList.remove("show"), 900);
-      }
+      // Combo is computed on the server and appears in the shared log.
 
       function loadPrefs() {
         try {
@@ -701,19 +663,7 @@
           if (msg.type === "event" && msg.event) {
             const evn = msg.event;
             if (evn.kind === "impact") {
-              const outcome = evn.outcome === "shield" ? "shield" : "hit";
-              const by = evn.byTeam === "B" ? "B" : "A";
-              const t = Date.now();
-              if (outcome === "hit") {
-                if (combo.lastBy === by && t - combo.lastAt < 6000) combo.count += 1;
-                else combo.count = 1;
-                combo.lastBy = by;
-                combo.lastAt = t;
-                if (combo.count >= 2) showCombo(by, combo.count);
-              } else {
-                combo.count = 0;
-                combo.lastBy = null;
-              }
+              // no-op: impact visuals are reflected via HP/snow/shield and the shared log
               return;
             }
           }
