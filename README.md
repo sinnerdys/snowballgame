@@ -92,3 +92,25 @@ git push -u origin main
 ```
 
 
+
+
+## GitHub: как создать токен (PAT) для пуша по HTTPS
+
+GitHub не принимает пароль аккаунта для `git push` по HTTPS — нужен **Personal Access Token**.
+
+### Создать Fine-grained token (рекомендовано)
+1. GitHub → Settings → Developer settings → Personal access tokens → Fine-grained tokens
+2. Generate new token
+3. Repository access: Only select repositories → выбери `snowballgame`
+4. Permissions:
+   - Contents: Read and write
+   - Metadata: Read
+5. Generate token и сразу скопируй (потом GitHub не покажет).
+
+### Использовать токен при push
+При `git push`:
+- Username: твой GitHub username
+- Password: вставь токен (это и есть “пароль” для git)
+
+Remote должен быть HTTPS:
+`https://github.com/sinnerdys/snowballgame.git`
