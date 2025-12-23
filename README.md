@@ -80,7 +80,7 @@ npm start
 
 Репозиторий: [sinnerdys/snowballgame](https://github.com/sinnerdys/snowballgame)
 
-Команды из корня проекта:
+Команды из корня проекта: 
 
 ```bash
 git init
