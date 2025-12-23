@@ -1,0 +1,833 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Snowball.io — Офисные снежки</title>
+    <style>
+      :root{
+        --bg0:#070A16;
+        --fg:rgba(255,255,255,.92);
+        --muted:rgba(255,255,255,.70);
+        --stroke:rgba(255,255,255,.14);
+        --stroke2:rgba(255,255,255,.10);
+        --glass:rgba(255,255,255,.08);
+        --glass2:rgba(255,255,255,.05);
+        --shadow: 0 22px 90px rgba(0,0,0,.50);
+        --shadow2: 0 12px 40px rgba(0,0,0,.38);
+        --rad: 18px;
+        --rad2: 14px;
+        --a:#60A5FA; /* icy blue */
+        --b:#1D4ED8; /* deep blue */
+        --c:#22C55E; /* pine */
+        --warn:#FBBF24;
+        --danger:#FB7185;
+        --ok:#22C55E;
+        --ring: 0 0 0 3px rgba(96,165,250,.25), 0 0 0 1px rgba(255,255,255,.12) inset;
+      }
+      *{ box-sizing:border-box }
+      html,body{ height:100% }
+      body{
+        margin:0;
+        font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Arial;
+        color:var(--fg);
+        background:
+          radial-gradient(1200px 820px at 15% 10%, rgba(96,165,250,.22), transparent 58%),
+          radial-gradient(1100px 780px at 85% 25%, rgba(29,78,216,.18), transparent 60%),
+          radial-gradient(900px 650px at 50% 115%, rgba(34,197,94,.12), transparent 58%),
+          linear-gradient(180deg, #070A16, #030414);
+        overflow-x:hidden;
+      }
+      .bg{ position:fixed; inset:0; pointer-events:none; }
+      .blob{ position:absolute; filter: blur(34px); opacity:.70; transform: translateZ(0); }
+      .blob.a{
+        width:min(620px,70vw); height:min(620px,70vw);
+        left:-10vw; top:-18vw;
+        background: radial-gradient(circle at 30% 30%, rgba(96,165,250,.85), rgba(96,165,250,.02) 60%);
+        animation: floatA 14s ease-in-out infinite;
+      }
+      .blob.b{
+        width:min(700px,75vw); height:min(700px,75vw);
+        right:-18vw; bottom:-24vw;
+        background: radial-gradient(circle at 40% 40%, rgba(29,78,216,.75), rgba(29,78,216,.02) 62%);
+        animation: floatB 16s ease-in-out infinite;
+      }
+      @keyframes floatA{ 0%,100%{ transform: translate(0,0) scale(1) } 50%{ transform: translate(3vw,2vw) scale(1.06) } }
+      @keyframes floatB{ 0%,100%{ transform: translate(0,0) scale(1) } 50%{ transform: translate(-3vw,-2vw) scale(1.05) } }
+
+      #snowCanvas{
+        position:absolute;
+        inset:0;
+        width:100%;
+        height:100%;
+        opacity:.70;
+      }
+
+      .app{
+        width:min(1100px, calc(100vw - 32px));
+        margin: clamp(18px, 5vw, 44px) auto 54px;
+        display:grid;
+        gap: 16px;
+      }
+      .top{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        flex-wrap:wrap;
+        gap: 12px;
+      }
+      .title{ margin:0; font-weight: 860; letter-spacing:-0.02em; font-size: clamp(24px, 3vw, 38px); line-height:1.05; }
+      .subtitle{ margin:8px 0 0; color: var(--muted); font-size: 14px; }
+
+      .card{
+        background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+        border: 1px solid var(--stroke);
+        border-radius: var(--rad);
+        box-shadow: var(--shadow2);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        padding: 14px;
+      }
+      .grid{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+      }
+      .panel{
+        display:grid;
+        gap: 12px;
+      }
+      .row{ display:flex; gap: 10px; flex-wrap:wrap; align-items:center; }
+      .field{ display:grid; gap: 8px; min-width: 220px; flex:1 1 220px; }
+      .label{ color: var(--muted); font-size: 12px; letter-spacing:.08em; text-transform: uppercase; }
+      input, select{
+        width:100%;
+        background: rgba(0,0,0,.18);
+        border: 1px solid var(--stroke2);
+        color: var(--fg);
+        border-radius: 12px;
+        padding: 12px 12px;
+        font-weight: 650;
+        outline:none;
+      }
+      input::placeholder{ color: rgba(255,255,255,.55) }
+      input:focus-visible, select:focus-visible{ box-shadow: var(--ring) }
+
+      .segmented{
+        display:flex;
+        border: 1px solid var(--stroke2);
+        background: rgba(0,0,0,.14);
+        border-radius: 999px;
+        padding: 4px;
+        gap: 4px;
+      }
+      .segmented button{
+        flex:1 1 auto;
+        padding: 10px 12px;
+        border-radius: 999px;
+        border:0;
+        cursor:pointer;
+        color: rgba(255,255,255,.80);
+        background: transparent;
+        font-weight: 760;
+        transition: background .2s ease, transform .08s ease, color .2s ease;
+        outline:none;
+      }
+      .segmented button:hover{ background: rgba(255,255,255,.06); color: rgba(255,255,255,.92) }
+      .segmented button:active{ transform: translateY(1px) }
+      .segmented button:focus-visible{ box-shadow: var(--ring) }
+      .segmented button.active{
+        background: linear-gradient(135deg, rgba(96,165,250,.55), rgba(29,78,216,.26));
+        color: rgba(255,255,255,.96);
+        border: 1px solid rgba(255,255,255,.10);
+      }
+
+      .btn{
+        border: 1px solid var(--stroke2);
+        border-radius: 999px;
+        padding: 10px 14px;
+        cursor:pointer;
+        color: rgba(255,255,255,.92);
+        background: rgba(0,0,0,.16);
+        font-weight: 780;
+        letter-spacing: .01em;
+        outline:none;
+        transition: transform .08s ease, background .2s ease, box-shadow .2s ease;
+        user-select:none;
+      }
+      .btn:hover{ background: rgba(255,255,255,.06) }
+      .btn:active{ transform: translateY(1px) }
+      .btn:focus-visible{ box-shadow: var(--ring) }
+      .btn.primary{
+        border-color: rgba(255,255,255,.12);
+        background: linear-gradient(135deg, rgba(96,165,250,.70), rgba(29,78,216,.30));
+        box-shadow: 0 10px 28px rgba(96,165,250,.18);
+      }
+      .btn.danger{
+        background: linear-gradient(135deg, rgba(251,113,133,.58), rgba(251,191,36,.22));
+        border-color: rgba(255,255,255,.10);
+      }
+      .btn[disabled]{ opacity:.55; cursor:not-allowed }
+
+      .stats{
+        display:grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+      .team{
+        border: 1px solid var(--stroke2);
+        border-radius: var(--rad2);
+        background: rgba(0,0,0,.14);
+        padding: 12px;
+        display:grid;
+        gap: 10px;
+      }
+      .team h3{ margin:0; font-size: 16px; letter-spacing:-.01em; }
+      .badge{
+        display:inline-flex; gap: 8px; align-items:center;
+        font-weight: 780;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.06);
+      }
+      .bar{
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.08);
+        border: 1px solid rgba(255,255,255,.10);
+        overflow:hidden;
+      }
+      .bar > div{
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(90deg, rgba(34,197,94,.70), rgba(96,165,250,.55));
+        transition: width .25s ease;
+      }
+      .kv{ display:flex; justify-content:space-between; gap: 10px; color: var(--muted); font-weight: 650; }
+      .kv b{ color: var(--fg); letter-spacing:.01em }
+      .shield{
+        display:flex; justify-content:space-between; align-items:center;
+        gap: 12px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(255,255,255,.05);
+      }
+      .shield.on{ border-color: rgba(96,165,250,.28); box-shadow: 0 0 0 1px rgba(96,165,250,.18) inset; }
+      .shield small{ color: var(--muted) }
+
+      .actions{
+        display:grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 10px;
+      }
+      .cooldown{
+        color: var(--muted);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .log{
+        height: 360px;
+        overflow:auto;
+        border: 1px solid var(--stroke2);
+        border-radius: var(--rad2);
+        background: rgba(0,0,0,.14);
+        padding: 10px;
+      }
+      .logItem{
+        padding: 8px 8px;
+        border-bottom: 1px solid rgba(255,255,255,.06);
+        color: rgba(255,255,255,.86);
+      }
+      .logItem:last-child{ border-bottom:0 }
+      .logItem time{ color: var(--muted); font-size: 12px; margin-right: 8px; }
+
+      .pill{
+        display:inline-flex;
+        gap: 8px;
+        align-items:center;
+        padding: 8px 10px;
+        border-radius: 999px;
+        border: 1px solid rgba(255,255,255,.10);
+        background: rgba(0,0,0,.14);
+        color: rgba(255,255,255,.86);
+        font-weight: 700;
+      }
+
+      .hidden{ display:none !important }
+      .error{
+        color: rgba(255,255,255,.94);
+        background: rgba(251,113,133,.16);
+        border: 1px solid rgba(251,113,133,.22);
+        padding: 10px 12px;
+        border-radius: 14px;
+      }
+
+      dialog{
+        border:0;
+        padding:0;
+        background: transparent;
+      }
+      dialog::backdrop{ background: rgba(0,0,0,.55); backdrop-filter: blur(4px); }
+      .modal{
+        width:min(560px, calc(100vw - 32px));
+        border-radius: var(--rad);
+        border: 1px solid var(--stroke);
+        background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        padding: 18px;
+        color: var(--fg);
+      }
+      .modal h2{ margin:0; font-size: 20px; letter-spacing:-.01em }
+      .modal p{ margin: 10px 0 16px; color: var(--muted) }
+      .modal .row{ justify-content:flex-end }
+
+      @media (max-width: 960px){
+        .grid{ grid-template-columns: 1fr; }
+        .actions{ grid-template-columns: 1fr; }
+        .stats{ grid-template-columns: 1fr; }
+        .log{ height: 320px; }
+      }
+      @media (prefers-reduced-motion: reduce){
+        .blob.a,.blob.b{ animation:none }
+        *{ transition:none !important }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="bg" aria-hidden="true">
+      <div class="blob a"></div>
+      <div class="blob b"></div>
+      <canvas id="snowCanvas"></canvas>
+    </div>
+
+    <main class="app">
+      <header class="top">
+        <div>
+          <h1 class="title">Snowball.io — Офисные снежки</h1>
+          <p class="subtitle">Две команды · 10 HP · 20 снежков · щит на 15с · кулдаун 5с</p>
+        </div>
+        <div class="row">
+          <span id="roomPill" class="pill">Комната: —</span>
+          <button id="copyLinkBtn" class="btn" type="button" title="Скопировать ссылку с кодом комнаты">Скопировать ссылку</button>
+          <button id="leaveBtn" class="btn" type="button" title="Выйти в меню">Выйти</button>
+        </div>
+      </header>
+
+      <section id="joinCard" class="card">
+        <div class="grid">
+          <div class="panel">
+            <div class="row">
+              <div class="field">
+                <span class="label">Ник</span>
+                <input id="nick" maxlength="18" placeholder="Напр. Сергей" autocomplete="nickname" />
+              </div>
+              <div class="field">
+                <span class="label">Код комнаты</span>
+                <input id="roomCode" inputmode="numeric" pattern="\\d{6}" maxlength="6" placeholder="123456" />
+              </div>
+            </div>
+            <div class="field">
+              <span class="label">Команда</span>
+              <div class="segmented" role="tablist" aria-label="Выбор команды">
+                <button id="teamA" class="active" type="button" aria-pressed="true">Office A</button>
+                <button id="teamB" type="button" aria-pressed="false">Office B</button>
+              </div>
+            </div>
+            <div class="row">
+              <button id="joinBtn" class="btn primary" type="button">Войти в бой</button>
+              <span class="cooldown">Совет: пусть оба офиса зайдут в <b>одну</b> комнату и введут <b>одинаковый</b> 6‑значный код.</span>
+            </div>
+            <div id="joinError" class="error hidden"></div>
+          </div>
+
+          <div class="panel">
+            <div class="team">
+              <h3>Как это работает</h3>
+              <div class="kv"><span>Действие</span><b>1 раз / 5 секунд</b></div>
+              <div class="kv"><span>Бросок</span><b>−1 снежок · −1 HP врагу (если без щита)</b></div>
+              <div class="kv"><span>Щит</span><b>15с · 3 прочности · блокирует все атаки</b></div>
+              <div class="kv"><span>Финал</span><b>когда HP = 0</b></div>
+              <button id="howResetBtn" class="btn danger" type="button" title="Сбросить игру в комнате">Сбросить игру</button>
+              <small style="color:var(--muted)">Сброс доступен всем (без мудрости).</small>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="gameCard" class="card hidden">
+        <div class="grid">
+          <div class="panel">
+            <div class="stats">
+              <div class="team" id="teamBoxA">
+                <div class="row" style="justify-content:space-between">
+                  <h3>Office A</h3>
+                  <span class="badge">🎯 <span id="playersA">0</span></span>
+                </div>
+                <div class="kv"><span>HP</span><b><span id="hpA">10</span>/10</b></div>
+                <div class="bar" aria-label="HP Office A"><div id="hpBarA"></div></div>
+                <div class="kv"><span>Снежки</span><b>❄️ <span id="snowA">20</span></b></div>
+                <div class="shield" id="shieldA">
+                  <div>
+                    <div><b>🛡️ Щит</b></div>
+                    <small id="shieldAText">неактивний</small>
+                  </div>
+                  <div class="badge">HP <span id="shieldAHp">0</span></div>
+                </div>
+              </div>
+
+              <div class="team" id="teamBoxB">
+                <div class="row" style="justify-content:space-between">
+                  <h3>Office B</h3>
+                  <span class="badge">🎯 <span id="playersB">0</span></span>
+                </div>
+                <div class="kv"><span>HP</span><b><span id="hpB">10</span>/10</b></div>
+                <div class="bar" aria-label="HP Office B"><div id="hpBarB"></div></div>
+                <div class="kv"><span>Снежки</span><b>❄️ <span id="snowB">20</span></b></div>
+                <div class="shield" id="shieldB">
+                  <div>
+                    <div><b>🛡️ Щит</b></div>
+                    <small id="shieldBText">неактивний</small>
+                  </div>
+                  <div class="badge">HP <span id="shieldBHp">0</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row" style="justify-content:space-between">
+              <span class="pill" id="mePill">Вы: —</span>
+              <span class="pill" id="statusPill">Статус: —</span>
+            </div>
+
+            <div class="actions">
+              <button id="throwBtn" class="btn primary" type="button">❄️ Бросить снежок</button>
+              <button id="shieldBtn" class="btn" type="button">🛡️ Включить щит</button>
+              <button id="resetBtn" class="btn danger" type="button">🎄 Новая игра</button>
+            </div>
+            <div class="row" style="justify-content:space-between">
+              <span class="cooldown">Кулдаун: <b id="cooldownText">0с</b></span>
+              <span class="cooldown">Горячие клавиши: <b>R</b> — новая игра, <b>1</b> — бросок, <b>2</b> — щит</span>
+            </div>
+            <div id="gameError" class="error hidden"></div>
+          </div>
+
+          <div class="panel">
+            <div class="row" style="justify-content:space-between">
+              <span class="label">Живой лог</span>
+              <button id="clearLogBtn" class="btn" type="button">Очистить</button>
+            </div>
+            <div id="log" class="log" aria-label="Лог событий"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="winDialog">
+      <form method="dialog" class="modal">
+        <h2 id="winTitle">Победа!</h2>
+        <p id="winBody">Office A победили.</p>
+        <div class="row">
+          <button class="btn primary" value="ok">Ок</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const ui = {
+        joinCard: $("joinCard"),
+        gameCard: $("gameCard"),
+        nick: $("nick"),
+        roomCode: $("roomCode"),
+        teamA: $("teamA"),
+        teamB: $("teamB"),
+        joinBtn: $("joinBtn"),
+        joinError: $("joinError"),
+        howResetBtn: $("howResetBtn"),
+        leaveBtn: $("leaveBtn"),
+        copyLinkBtn: $("copyLinkBtn"),
+        roomPill: $("roomPill"),
+
+        playersA: $("playersA"),
+        playersB: $("playersB"),
+        hpA: $("hpA"),
+        hpB: $("hpB"),
+        hpBarA: $("hpBarA"),
+        hpBarB: $("hpBarB"),
+        snowA: $("snowA"),
+        snowB: $("snowB"),
+        shieldA: $("shieldA"),
+        shieldB: $("shieldB"),
+        shieldAText: $("shieldAText"),
+        shieldBText: $("shieldBText"),
+        shieldAHp: $("shieldAHp"),
+        shieldBHp: $("shieldBHp"),
+        mePill: $("mePill"),
+        statusPill: $("statusPill"),
+        throwBtn: $("throwBtn"),
+        shieldBtn: $("shieldBtn"),
+        resetBtn: $("resetBtn"),
+        cooldownText: $("cooldownText"),
+        gameError: $("gameError"),
+        clearLogBtn: $("clearLogBtn"),
+        log: $("log"),
+
+        winDialog: $("winDialog"),
+        winTitle: $("winTitle"),
+        winBody: $("winBody"),
+      };
+
+      const LS = "snowball_office_v1";
+      const state = {
+        id: null,
+        ws: null,
+        team: "A",
+        nick: "",
+        roomCode: "OFFICE",
+        lastActionAt: 0,
+        serverTime: 0,
+        room: null,
+      };
+
+      function loadPrefs() {
+        try {
+          const raw = localStorage.getItem(LS);
+          if (!raw) return;
+          const p = JSON.parse(raw);
+          if (typeof p.nick === "string") ui.nick.value = p.nick.slice(0, 18);
+          if (typeof p.roomCode === "string") ui.roomCode.value = p.roomCode.slice(0, 10);
+          if (p.team === "B") setTeam("B");
+        } catch {}
+      }
+      function savePrefs() {
+        try {
+          localStorage.setItem(LS, JSON.stringify({ nick: state.nick, roomCode: state.roomCode, team: state.team }));
+        } catch {}
+      }
+
+      function show(el, yes) {
+        el.classList.toggle("hidden", !yes);
+      }
+      function setError(el, text) {
+        if (!text) {
+          el.textContent = "";
+          show(el, false);
+          return;
+        }
+        el.textContent = text;
+        show(el, true);
+      }
+
+      function setTeam(team) {
+        state.team = team;
+        ui.teamA.classList.toggle("active", team === "A");
+        ui.teamB.classList.toggle("active", team === "B");
+        ui.teamA.setAttribute("aria-pressed", String(team === "A"));
+        ui.teamB.setAttribute("aria-pressed", String(team === "B"));
+      }
+
+      function wsUrl() {
+        const proto = location.protocol === "https:" ? "wss:" : "ws:";
+        return `${proto}//${location.host}`;
+      }
+
+      function readRoomFromUrl() {
+        const params = new URLSearchParams(location.search || "");
+        const room = (params.get("room") || "").trim().slice(0, 6);
+        if (room) ui.roomCode.value = room.replace(/[^\d]/g, "");
+      }
+
+      function setRoomInUrl(code) {
+        const url = new URL(location.href);
+        url.searchParams.set("room", code);
+        history.replaceState(null, "", url.toString());
+      }
+
+      function connect() {
+        if (state.ws && state.ws.readyState === WebSocket.OPEN) return;
+        if (state.ws && state.ws.readyState === WebSocket.CONNECTING) return;
+
+        const ws = new WebSocket(wsUrl());
+        state.ws = ws;
+
+        ws.addEventListener("open", () => {
+          setError(ui.joinError, "");
+          setError(ui.gameError, "");
+          ui.statusPill.textContent = "Статус: подключено";
+          joinRoom();
+        });
+
+        ws.addEventListener("message", (ev) => {
+          const msg = safeJson(ev.data);
+          if (!msg) return;
+          if (msg.type === "hello") {
+            state.id = msg.id || null;
+            state.serverTime = msg.serverTime || 0;
+            return;
+          }
+          if (msg.type === "state") {
+            state.room = msg.state;
+            state.serverTime = msg.state?.serverTime || state.serverTime;
+            render();
+            return;
+          }
+          if (msg.type === "error") {
+            flashError(msg.error || "Ошибка.");
+          }
+        });
+
+        ws.addEventListener("close", () => {
+          ui.statusPill.textContent = "Статус: отключено (переподключение…)";
+          setTimeout(() => connect(), 700);
+        });
+      }
+
+      function safeJson(raw) {
+        try { return JSON.parse(String(raw)); } catch { return null; }
+      }
+
+      function joinRoom() {
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+        const nick = String(ui.nick.value || "").trim().slice(0, 18);
+        const roomCode = String(ui.roomCode.value || "").trim().replace(/[^\d]/g, "").slice(0, 6);
+        if (!nick) {
+          setError(ui.joinError, "Введите ник.");
+          return;
+        }
+        if (!/^\d{6}$/.test(roomCode)) {
+          setError(ui.joinError, "Инвайт‑код должен быть 6 цифр.");
+          return;
+        }
+        state.nick = nick;
+        state.roomCode = roomCode;
+        savePrefs();
+        setRoomInUrl(state.roomCode);
+
+        state.ws.send(JSON.stringify({ type: "join", nick, team: state.team, roomCode: state.roomCode }));
+        ui.roomPill.textContent = `Комната: ${state.roomCode}`;
+        ui.mePill.textContent = `Вы: ${state.nick} (Office ${state.team})`;
+
+        show(ui.joinCard, false);
+        show(ui.gameCard, true);
+      }
+
+      function sendAction(action) {
+        if (!state.ws || state.ws.readyState !== WebSocket.OPEN) return;
+        state.ws.send(JSON.stringify({ type: "action", action }));
+        state.lastActionAt = Date.now();
+      }
+
+      function flashError(text) {
+        // If not in game yet, show join error.
+        const target = ui.gameCard.classList.contains("hidden") ? ui.joinError : ui.gameError;
+        setError(target, text);
+        setTimeout(() => setError(target, ""), 1800);
+      }
+
+      function formatTime(ts) {
+        const d = new Date(ts);
+        const hh = String(d.getHours()).padStart(2, "0");
+        const mm = String(d.getMinutes()).padStart(2, "0");
+        const ss = String(d.getSeconds()).padStart(2, "0");
+        return `${hh}:${mm}:${ss}`;
+      }
+
+      function render() {
+        const r = state.room;
+        if (!r) return;
+
+        ui.roomPill.textContent = `Комната: ${r.code}`;
+
+        const playersA = r.players.filter((p) => p.team === "A").length;
+        const playersB = r.players.filter((p) => p.team === "B").length;
+        ui.playersA.textContent = String(playersA);
+        ui.playersB.textContent = String(playersB);
+
+        ui.hpA.textContent = String(r.teams.A.hp);
+        ui.hpB.textContent = String(r.teams.B.hp);
+        ui.hpBarA.style.width = `${Math.max(0, Math.min(100, (r.teams.A.hp / 10) * 100))}%`;
+        ui.hpBarB.style.width = `${Math.max(0, Math.min(100, (r.teams.B.hp / 10) * 100))}%`;
+        ui.snowA.textContent = String(r.teams.A.snow);
+        ui.snowB.textContent = String(r.teams.B.snow);
+
+        renderShield("A", r.teams.A.shield);
+        renderShield("B", r.teams.B.shield);
+
+        // Log
+        ui.log.innerHTML = r.log
+          .map((it) => `<div class="logItem"><time>${formatTime(it.t)}</time>${escapeHtml(it.text)}</div>`)
+          .join("");
+        ui.log.scrollTop = ui.log.scrollHeight;
+
+        if (r.finished && r.winner) {
+          ui.winTitle.textContent = r.winner === state.team ? "Победа!" : "Поражение";
+          ui.winBody.textContent = `Победили: Office ${r.winner}.`;
+          try { ui.winDialog.showModal(); } catch {}
+        }
+      }
+
+      function renderShield(team, shield) {
+        const box = team === "A" ? ui.shieldA : ui.shieldB;
+        const text = team === "A" ? ui.shieldAText : ui.shieldBText;
+        const hp = team === "A" ? ui.shieldAHp : ui.shieldBHp;
+        const on = !!shield.active;
+        box.classList.toggle("on", on);
+        hp.textContent = String(shield.hp || 0);
+        if (!on) {
+          text.textContent = "неактивен";
+          return;
+        }
+        const leftMs = Math.max(0, (shield.until || 0) - (Date.now() - timeSkewMs()));
+        text.textContent = `активен · ${Math.ceil(leftMs / 1000)}с`;
+      }
+
+      function timeSkewMs() {
+        // clientNow - serverNow, rough.
+        if (!state.room?.serverTime) return 0;
+        return Date.now() - state.room.serverTime;
+      }
+
+      function escapeHtml(s) {
+        return String(s)
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function tickCooldown() {
+        const left = Math.max(0, 5000 - (Date.now() - state.lastActionAt));
+        ui.cooldownText.textContent = `${Math.ceil(left / 1000)}с`;
+        const disabled = left > 0;
+        ui.throwBtn.disabled = disabled;
+        ui.shieldBtn.disabled = disabled;
+      }
+
+      // UI events
+      ui.teamA.addEventListener("click", () => setTeam("A"));
+      ui.teamB.addEventListener("click", () => setTeam("B"));
+      ui.joinBtn.addEventListener("click", () => {
+        setError(ui.joinError, "");
+        connect();
+      });
+      ui.howResetBtn.addEventListener("click", () => {
+        connect();
+        setTimeout(() => sendAction("reset"), 200);
+      });
+
+      ui.throwBtn.addEventListener("click", () => sendAction("throw"));
+      ui.shieldBtn.addEventListener("click", () => sendAction("shield"));
+      ui.resetBtn.addEventListener("click", () => sendAction("reset"));
+      ui.leaveBtn.addEventListener("click", () => {
+        show(ui.gameCard, false);
+        show(ui.joinCard, true);
+        setError(ui.gameError, "");
+        ui.statusPill.textContent = "Статус: —";
+        try { state.ws?.close(); } catch {}
+      });
+      ui.clearLogBtn.addEventListener("click", () => {
+        ui.log.innerHTML = "";
+      });
+
+      ui.copyLinkBtn.addEventListener("click", async () => {
+        const code = String(state.room?.code || state.roomCode || ui.roomCode.value || "").replace(/[^\d]/g, "").slice(0, 6);
+        const url = new URL(location.href);
+        url.searchParams.set("room", code);
+        const text = url.toString();
+        try {
+          await navigator.clipboard.writeText(text);
+          ui.statusPill.textContent = "Статус: ссылка скопирована";
+          setTimeout(() => (ui.statusPill.textContent = "Статус: —"), 1200);
+        } catch {
+          flashError("Не получилось скопировать. Скопируйте адрес из строки браузера.");
+        }
+      });
+
+      window.addEventListener("keydown", (e) => {
+        if (e.altKey || e.ctrlKey || e.metaKey) return;
+        if (ui.gameCard.classList.contains("hidden")) return;
+        const k = e.key.toLowerCase();
+        if (k === "1") ui.throwBtn.click();
+        if (k === "2") ui.shieldBtn.click();
+        if (k === "r") ui.resetBtn.click();
+      });
+
+      // init
+      loadPrefs();
+      readRoomFromUrl();
+      ui.statusPill.textContent = "Статус: —";
+      setInterval(() => {
+        tickCooldown();
+        // update shield timers text without requiring server push
+        if (state.room) {
+          renderShield("A", state.room.teams.A.shield);
+          renderShield("B", state.room.teams.B.shield);
+        }
+      }, 200);
+
+      // Snow effect (canvas)
+      (function initSnow(){
+        const reduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        if (reduced) return;
+        const canvas = document.getElementById("snowCanvas");
+        const ctx = canvas.getContext("2d", { alpha: true });
+        if (!ctx) return;
+
+        let w = 0, h = 0, dpr = 1;
+        /** @type {{x:number,y:number,r:number,vy:number,vx:number,alpha:number}[]} */
+        let flakes = [];
+
+        function spawn(randomY) {
+          const x = Math.random() * w;
+          const y = randomY ? Math.random() * h : -10 * dpr;
+          const r = (Math.random() * 2.2 + 0.8) * dpr;
+          const vy = (Math.random() * 0.55 + 0.35) * dpr;
+          const vx = (Math.random() * 0.25 - 0.12) * dpr;
+          const alpha = Math.random() * 0.40 + 0.22;
+          return { x, y, r, vy, vx, alpha };
+        }
+
+        function resize() {
+          const rect = canvas.getBoundingClientRect();
+          dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+          w = Math.floor(rect.width * dpr);
+          h = Math.floor(rect.height * dpr);
+          canvas.width = w;
+          canvas.height = h;
+          const count = Math.floor((rect.width * rect.height) / 18000);
+          flakes = new Array(Math.max(60, Math.min(220, count))).fill(0).map(() => spawn(true));
+        }
+
+        function step() {
+          ctx.clearRect(0, 0, w, h);
+          for (let i = 0; i < flakes.length; i++) {
+            const f = flakes[i];
+            f.y += f.vy;
+            f.x += f.vx + Math.sin((f.y / 220) * dpr) * 0.15 * dpr;
+            if (f.y > h + 12 * dpr) flakes[i] = spawn(false);
+            if (f.x < -10 * dpr) f.x = w + 10 * dpr;
+            if (f.x > w + 10 * dpr) f.x = -10 * dpr;
+            ctx.globalAlpha = f.alpha;
+            ctx.beginPath();
+            ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(255,255,255,.9)";
+            ctx.fill();
+          }
+          requestAnimationFrame(step);
+        }
+
+        resize();
+        window.addEventListener("resize", () => resize(), { passive: true });
+        requestAnimationFrame(step);
+      })();
+    </script>
+  </body>
+</html>
+
+

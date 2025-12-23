@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: snowballgame
+    env: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    autoDeploy: true
+
