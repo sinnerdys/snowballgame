@@ -87,7 +87,7 @@ git init
 git add .
 git commit -m "Init Snowball office game"
 git branch -M main
-git remote add origin git@github.com:sinnerdys/snowballgame.git
+git remote add origin https://github.com/sinnerdys/snowballgame.git
 git push -u origin main
 ```
 
